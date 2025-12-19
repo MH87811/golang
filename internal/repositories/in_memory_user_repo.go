@@ -6,30 +6,38 @@ import (
 )
 
 type InMemoryUserRepo struct {
-	users map[string]models.User
+	users      map[uint]models.User
+	emailIndex map[string]uint
+	autoID     uint
 }
 
 func NewInMemoryUserRepo() *InMemoryUserRepo {
 	return &InMemoryUserRepo{
-		users: make(map[string]models.User),
+		users:      make(map[uint]models.User),
+		emailIndex: make(map[string]uint),
+		autoID:     1,
 	}
 }
 
 func (r *InMemoryUserRepo) Save(user models.User) (models.User, error) {
-	r.users[user.Email] = user
+	user.ID = r.autoID
+	r.autoID++
+
+	r.users[user.ID] = user
+	r.emailIndex[user.Email] = user.ID
 	return user, nil
 }
 
 func (r *InMemoryUserRepo) FindByEmail(email string) (models.User, error) {
-	user, ok := r.users[email]
+	id, ok := r.emailIndex[email]
 	if !ok {
 		return models.User{}, fmt.Errorf("user not found")
 	}
-	return user, nil
+	return r.users[id], nil
 }
 
 func (r *InMemoryUserRepo) FindByID(id uint) (models.User, error) {
-	user, ok := r.users[string(id)]
+	user, ok := r.users[id]
 	if !ok {
 		return models.User{}, fmt.Errorf("user not found")
 	}

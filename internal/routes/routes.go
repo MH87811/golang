@@ -1,48 +1,30 @@
 package routes
 
 import (
-	"net/http"
-	"shop/internal/config"
 	"shop/internal/handlers"
 	"shop/internal/middlewares"
 	"shop/internal/repositories"
-	"shop/internal/services"
+	"shop/pkg/jwtpkg"
 
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterRoutes(r *gin.Engine) {
-	api := r.Group("api/")
+func RegisterRoutes(r *gin.Engine, authHandler *handlers.AuthHandler, jwt *jwtpkg.JWT, repo repositories.UserRepository) {
+	api := r.Group("/api")
 
-	api.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status": "ok",
-		})
-	})
-
-	userRepo := repositories.NewInMemoryUserRepo()
-	userService := services.NewUserService(userRepo)
-	api.POST("user/register", func(c *gin.Context) {
-		handlers.RegisterUser(c, userService)
-	})
-
-	authService := services.NewAuthService(userRepo, config.LoadConfig())
-
-	api.POST("/auth/login", func(c *gin.Context) {
-		handlers.Login(c, authService)
-	})
+	auth := api.Group("/auth")
+	{
+		auth.POST("/register", authHandler.Register)
+		auth.POST("/login", authHandler.Login)
+		auth.POST("/refresh", authHandler.Refresh)
+	}
 
 	protected := api.Group("/protected")
-	protected.Use(middlewares.AuthMiddleware(config.LoadConfig()))
-
-	protected.GET("/profile", func(c *gin.Context) {
-		userClaims, _ := c.Get("user")
-		c.JSON(http.StatusOK, gin.H{
-			"user": userClaims,
+	protected.Use(middlewares.AuthMiddleware(jwt, repo))
+	{
+		protected.GET("/profile", func(c *gin.Context) {
+			user, _ := c.Get("user")
+			c.JSON(200, gin.H{"user": user})
 		})
-	})
-
-	api.POST("auth/refresh", func(c *gin.Context) {
-		handlers.Refresh(c, authService)
-	})
+	}
 }

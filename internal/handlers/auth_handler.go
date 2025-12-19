@@ -1,57 +1,71 @@
 package handlers
 
 import (
-	"net/http"
-	"strings"
-
+	"shop/internal/dto"
+	"shop/internal/models"
 	"shop/internal/services"
 
 	"github.com/gin-gonic/gin"
 )
 
-type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+type AuthHandler struct {
+	userService *services.UserService
+	authService *services.AuthService
 }
 
-func Login(c *gin.Context, authService *services.AuthService) {
-	var request LoginRequest
-
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	accessToken, refreshToken, err := authService.Login(request.Email, request.Password)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"access": accessToken, "refresh": refreshToken})
+func NewAuthHandler(u *services.UserService, a *services.AuthService) *AuthHandler {
+	return &AuthHandler{u, a}
 }
 
-func Refresh(c *gin.Context, authService *services.AuthService) {
-	header := c.GetHeader("Authorization")
-	if header == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
-		return
-	}
-
-	parts := strings.Split(header, " ")
-	if len(parts) != 2 || parts[0] != "Bearer" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token format"})
-		return
-	}
-
-	accessToken, refreshToken, err := authService.Refresh(parts[1])
+func (h *AuthHandler) Refresh(c *gin.Context) {
+	refreshToken, err := c.Cookie("refresh_token")
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		Error(c, 401, "NO_REFRESH_TOKEN", "refresh token invalid")
+	}
+
+	access, err := h.authService.Refresh(refreshToken)
+	if err != nil {
+		Error(c, 401, "INVALID_REFRESH", err.Error())
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"accessToken":  accessToken,
-		"refreshToken": refreshToken,
-	})
+	Success(c, gin.H{"access_token": access})
+}
+
+func (h *AuthHandler) Register(c *gin.Context) {
+	var req dto.RegisterRequest
+	if err := c.ShouldBind(&req); err != nil {
+		Error(c, 400, "VALIDATION_ERROR", err.Error())
+		return
+	}
+
+	user, err := h.userService.Register(models.User{Email: req.Email, Password: req.Password})
+	if err != nil {
+		Error(c, 409, "EMAIL_EXISTS", err.Error())
+		return
+	}
+
+	Success(c, gin.H{"id": user.ID, "email": user.Email})
+}
+
+func (h *AuthHandler) Login(c *gin.Context) {
+	var req dto.LoginRequest
+	if err := c.ShouldBind(&req); err != nil {
+		Error(c, 400, "VALIDATION_ERROR", err.Error())
+		return
+	}
+
+	access, refresh, err := h.authService.Login(req.Email, req.Password)
+	if err != nil {
+		Error(c, 401, "INVALID_CREDENTIALS", err.Error())
+		return
+	}
+
+	c.SetCookie("refresh_token", refresh, 7*24*60*60, "/", "", false, true)
+	Success(c, gin.H{"access_token": access, "refresh_token": refresh})
+}
+
+func (h *AuthHandler) Profile(c *gin.Context) {
+	user, _ := c.Get("user")
+	Success(c, gin.H{"user": user})
 }

@@ -2,15 +2,14 @@ package middlewares
 
 import (
 	"net/http"
-	"shop/internal/auth"
-	"shop/internal/config"
+	"shop/internal/repositories"
+	"shop/pkg/jwtpkg"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
 
-func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
+func AuthMiddleware(jwt *jwtpkg.JWT, repo repositories.UserRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 
@@ -27,22 +26,26 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		token, err := jwt.ParseWithClaims(parts[1], &auth.TokenClaims{}, func(t *jwt.Token) (interface{}, error) {
-			return []byte(cfg.JWTSecret), nil
-		})
+		tokenStr := parts[1]
 
-		claims, ok := token.Claims.(*auth.TokenClaims)
-		if err != nil || !ok || !token.Valid {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		claims, err := jwt.Verify(tokenStr)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
 			return
 		}
 
 		if claims.Type != "access" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token type"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "not access token"})
 			return
 		}
 
-		c.Set("user", claims)
+		user, err := repo.FindByID(claims.UserID)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
+			return
+		}
+
+		c.Set("user", user)
 		c.Next()
 	}
 }

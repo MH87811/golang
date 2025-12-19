@@ -4,100 +4,51 @@ import (
 	"errors"
 	"time"
 
-	"shop/internal/auth"
-	"shop/internal/config"
-	"shop/internal/models"
 	"shop/internal/repositories"
-
-	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
+	"shop/pkg/hash"
+	"shop/pkg/jwtpkg"
 )
 
+var ErrInvalidCredential = errors.New("invalid credential")
+
 type AuthService struct {
-	Repo repositories.UserRepository
-	Cfg  *config.Config
+	repo repositories.UserRepository
+	jwt  *jwtpkg.JWT
 }
 
-func NewAuthService(repo repositories.UserRepository, cfg *config.Config) *AuthService {
+func NewAuthService(repo repositories.UserRepository, jwt *jwtpkg.JWT) *AuthService {
 	return &AuthService{
-		Repo: repo,
-		Cfg:  cfg,
+		repo: repo,
+		jwt:  jwt,
 	}
-}
-
-func (s *AuthService) GenerateToken(user models.User, tokenType string, ttl int64) (string, error) {
-	claims := auth.TokenClaims{
-		UserID: user.ID,
-		Email:  user.Email,
-		Role:   user.Role,
-		Type:   tokenType,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    s.Cfg.Issuer,
-			Subject:   "user-auth",
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(ttl) * time.Second)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(s.Cfg.JWTSecret))
-}
-
-func (s *AuthService) Refresh(refreshToken string) (string, string, error) {
-	token, err := jwt.ParseWithClaims(
-		refreshToken,
-		&auth.TokenClaims{},
-		func(t *jwt.Token) (interface{}, error) {
-			return []byte(s.Cfg.JWTSecret), nil
-		},
-	)
-
-	claims, ok := token.Claims.(*auth.TokenClaims)
-	if err != nil || !ok || !token.Valid {
-		return "", "", errors.New("invalid refresh token")
-	}
-
-	if claims.Type != "refresh" {
-		return "", "", errors.New("invalid token type")
-	}
-
-	user, err := s.Repo.FindByID(claims.UserID)
-	if err != nil {
-		return "", "", errors.New("user not found")
-	}
-
-	newAccess, err := s.GenerateToken(user, "access", s.Cfg.AccessTokenTTL)
-	if err != nil {
-		return "", "", err
-	}
-
-	newRefresh, err := s.GenerateToken(user, "refresh", s.Cfg.RefreshTokenTTL)
-	if err != nil {
-		return "", "", err
-	}
-
-	return newAccess, newRefresh, nil
 }
 
 func (s *AuthService) Login(email, password string) (string, string, error) {
-	user, err := s.Repo.FindByEmail(email)
+	user, err := s.repo.FindByEmail(email)
 	if err != nil {
-		return "", "", errors.New("invalid credentials")
+		return "", "", ErrInvalidCredential
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		return "", "", errors.New("invalid credentials")
+	if !hash.CheckPassword(password, user.Password) {
+		return "", "", ErrInvalidCredential
 	}
 
-	accessToken, err := s.GenerateToken(user, "access", s.Cfg.AccessTokenTTL)
+	access, _ := s.jwt.Generate(user, "access", time.Minute*15)
+	refresh, _ := s.jwt.Generate(user, "refresh", time.Hour*24*7)
+
+	return access, refresh, nil
+}
+
+func (s *AuthService) Refresh(refreshToken string) (string, error) {
+	claims, err := s.jwt.VerifyRefresh(refreshToken)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
-	refreshToken, err := s.GenerateToken(user, "refresh", s.Cfg.RefreshTokenTTL)
+	user, err := s.repo.FindByID(claims.UserID)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
-	return accessToken, refreshToken, nil
+	return s.jwt.Generate(user, "access", time.Minute*15)
 }

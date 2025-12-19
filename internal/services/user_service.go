@@ -4,34 +4,27 @@ import (
 	"errors"
 	"shop/internal/models"
 	"shop/internal/repositories"
-
-	"golang.org/x/crypto/bcrypt"
+	"shop/pkg/hash"
 )
 
+var ErrEmailExists = errors.New("email already exists")
+
 type UserService struct {
-	Repo repositories.UserRepository
+	repo repositories.UserRepository
 }
 
 func NewUserService(repo repositories.UserRepository) *UserService {
-	return &UserService{Repo: repo}
+	return &UserService{repo: repo}
 }
 
 func (s *UserService) Register(user models.User) (models.User, error) {
-	_, err := s.Repo.FindByEmail(user.Email)
+	_, err := s.repo.FindByEmail(user.Email)
 	if err == nil {
-		return models.User{}, errors.New("email already exists")
+		return models.User{}, ErrEmailExists
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return models.User{}, err
-	}
-	user.Password = string(hashedPassword)
+	hashedPassword, _ := hash.HashPassword(user.Password)
+	user.Password = hashedPassword
 
-	createdUser, err := s.Repo.Save(user)
-	if err != nil {
-		return models.User{}, err
-	}
-
-	return createdUser, nil
+	return s.repo.Save(user)
 }
