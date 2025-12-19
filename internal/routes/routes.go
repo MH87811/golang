@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterRoutes(r *gin.Engine, authHandler *handlers.AuthHandler, jwt *jwtpkg.JWT, repo repositories.UserRepository) {
+func RegisterRoutes(r *gin.Engine, authHandler *handlers.AuthHandler, productHandler *handlers.ProductHandler, jwt *jwtpkg.JWT, repo repositories.UserRepository) {
 	api := r.Group("/api")
 
 	auth := api.Group("/auth")
@@ -26,5 +26,7 @@ func RegisterRoutes(r *gin.Engine, authHandler *handlers.AuthHandler, jwt *jwtpk
 			user, _ := c.Get("user")
 			c.JSON(200, gin.H{"user": user})
 		})
+		protected.POST("/product", productHandler.Create)
+		protected.GET("/product", productHandler.List)
 	}
 }

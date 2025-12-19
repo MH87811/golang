@@ -1,15 +1,12 @@
 package services
 
 import (
-	"errors"
 	"time"
 
 	"shop/internal/repositories"
 	"shop/pkg/hash"
 	"shop/pkg/jwtpkg"
 )
-
-var ErrInvalidCredential = errors.New("invalid credential")
 
 type AuthService struct {
 	repo repositories.UserRepository

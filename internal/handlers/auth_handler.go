@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"shop/internal/dto"
 	"shop/internal/models"
 	"shop/internal/services"
@@ -40,7 +41,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	user, err := h.userService.Register(models.User{Email: req.Email, Password: req.Password})
-	if err != nil {
+	if errors.Is(err, services.ErrEmailExists) {
 		Error(c, 409, "EMAIL_EXISTS", err.Error())
 		return
 	}
@@ -56,7 +57,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	access, refresh, err := h.authService.Login(req.Email, req.Password)
-	if err != nil {
+	if errors.Is(err, services.ErrInvalidCredential) {
 		Error(c, 401, "INVALID_CREDENTIALS", err.Error())
 		return
 	}
