@@ -28,5 +28,7 @@ func RegisterRoutes(r *gin.Engine, authHandler *handlers.AuthHandler, productHan
 		})
 		protected.POST("/product", productHandler.Create)
 		protected.GET("/product", productHandler.List)
+		protected.PATCH("/product/:id", productHandler.Update)
+		protected.DELETE("/product/:id", productHandler.Delete)
 	}
 }
