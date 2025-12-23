@@ -30,5 +30,6 @@ func RegisterRoutes(r *gin.Engine, authHandler *handlers.AuthHandler, productHan
 		protected.GET("/product", productHandler.List)
 		protected.PATCH("/product/:id", productHandler.Update)
 		protected.DELETE("/product/:id", productHandler.Delete)
+		protected.PATCH("product/:id/restore", productHandler.Restore)
 	}
 }

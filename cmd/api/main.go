@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"shop/internal/config"
 	"shop/internal/handlers"
 	"shop/internal/models"
@@ -40,6 +41,10 @@ func main() {
 	for _, route := range r.Routes() {
 		println(route.Method, route.Path)
 	}
+	r.Use(gin.CustomRecovery(func(c *gin.Context, recovered any) {
+		fmt.Println("🔥 PANIC:", recovered)
+		c.AbortWithStatusJSON(500, gin.H{"error": "panic"})
+	}))
 
 	r.Run(":8080")
 }

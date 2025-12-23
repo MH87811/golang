@@ -19,7 +19,7 @@ func (r *ProductRepo) Create(product models.Product) (models.Product, error) {
 	return product, err
 }
 
-func (r *ProductRepo) List(limit, offset, minPrice, maxPrice int, query string) ([]models.Product, int64, error) {
+func (r *ProductRepo) List(limit, offset, minPrice, maxPrice int, query, sort string) ([]models.Product, int64, error) {
 	var products []models.Product
 	var total int64
 
@@ -37,7 +37,19 @@ func (r *ProductRepo) List(limit, offset, minPrice, maxPrice int, query string) 
 
 	db.Count(&total)
 
-	err := r.db.Limit(limit).Offset(offset).Order("created_at").Find(&products).Error
+	order := "created_at desc"
+	switch sort {
+	case "price_asc":
+		order = "price asc"
+	case "price desc":
+		order = "price desc"
+	case "newest":
+		order = "newest"
+	case "oldest":
+		order = "oldest"
+	}
+
+	err := r.db.Limit(limit).Offset(offset).Order(order).Find(&products).Error
 
 	return products, total, err
 }
@@ -49,9 +61,26 @@ func (r *ProductRepo) FindByID(id uint) (models.Product, error) {
 }
 
 func (r *ProductRepo) Update(product models.Product) (models.Product, error) {
-	return product, r.db.Save(&product).Error
+	if err := r.db.Save(&product).Error; err != nil {
+		return models.Product{}, err
+	}
+	return product, nil
 }
 
 func (r *ProductRepo) Delete(id uint) error {
 	return r.db.Delete(&models.Product{}, id).Error
+}
+
+func (r *ProductRepo) Restore(id uint) (models.Product, error) {
+	var product models.Product
+
+	if err := r.db.Unscoped().First(&product).Error; err != nil {
+		return models.Product{}, err
+	}
+
+	if err := r.db.Unscoped().Model(&product).Update("deleted_at", nil).Error; err != nil {
+		return models.Product{}, err
+	}
+
+	return product, nil
 }

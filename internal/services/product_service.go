@@ -22,9 +22,9 @@ func (s *ProductService) Create(product models.Product) (models.Product, error) 
 	return s.repo.Create(product)
 }
 
-func (s *ProductService) List(limit, page, minPrice, maxPrice int, query string) ([]models.Product, int64, error) {
+func (s *ProductService) List(limit, page, minPrice, maxPrice int, query, sort string) ([]models.Product, int64, error) {
 	offset := (page - 1) * limit
-	return s.repo.List(limit, offset, minPrice, maxPrice, query)
+	return s.repo.List(limit, offset, minPrice, maxPrice, query, sort)
 }
 
 func (s *ProductService) Update(productID, userID uint, req dto.UpdateProductRequest) (models.Product, error) {
@@ -47,10 +47,10 @@ func (s *ProductService) Update(productID, userID uint, req dto.UpdateProductReq
 		product.Price = *req.Price
 	}
 	if req.Stock != nil {
-		if *req.Stock <= 0 {
-			return models.Product{}, errors.New("invalid price")
+		if *req.Stock < 0 {
+			return models.Product{}, errors.New("invalid stock")
 		}
-		product.Price = *req.Stock
+		product.Stock = *req.Stock
 	}
 
 	return s.repo.Update(product)
@@ -67,4 +67,20 @@ func (s *ProductService) Delete(productID, userID uint) error {
 	}
 
 	return s.repo.Delete(productID)
+}
+
+func (s *ProductService) Restore(productID, userID uint) (models.Product, error) {
+	product, err := s.repo.db.Unscoped().First(&models.Product{}, productID).Error
+	if err != nil {
+		return models.Product{}, errors.New("product not found")
+	}
+
+	var p models.Product
+	s.repo.db.Unscoped().First(&p, productID)
+
+	if p.UserID != userID {
+		return models.Product{}, errors.New("forbidden")
+	}
+
+	return s.repo.Restore(productID)
 }
