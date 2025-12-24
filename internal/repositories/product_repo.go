@@ -71,16 +71,14 @@ func (r *ProductRepo) Delete(id uint) error {
 	return r.db.Delete(&models.Product{}, id).Error
 }
 
+func (r *ProductRepo) FindUnscopedByID(id uint) (models.Product, error) {
+	var product models.Product
+	err := r.db.Unscoped().First(&product, id).Error
+	return product, err
+}
+
 func (r *ProductRepo) Restore(id uint) (models.Product, error) {
 	var product models.Product
-
-	if err := r.db.Unscoped().First(&product).Error; err != nil {
-		return models.Product{}, err
-	}
-
-	if err := r.db.Unscoped().Model(&product).Update("deleted_at", nil).Error; err != nil {
-		return models.Product{}, err
-	}
-
-	return product, nil
+	err := r.db.Unscoped().Model(&product).Where("id = ?", id).Update("deleted_at", nil).Error
+	return product, err
 }

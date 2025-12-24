@@ -70,17 +70,12 @@ func (s *ProductService) Delete(productID, userID uint) error {
 }
 
 func (s *ProductService) Restore(productID, userID uint) (models.Product, error) {
-	product, err := s.repo.db.Unscoped().First(&models.Product{}, productID).Error
+	product, err := s.repo.FindUnscopedByID(productID)
 	if err != nil {
-		return models.Product{}, errors.New("product not found")
+		return models.Product{}, errors.New("product not fond")
 	}
-
-	var p models.Product
-	s.repo.db.Unscoped().First(&p, productID)
-
-	if p.UserID != userID {
+	if product.UserID != userID {
 		return models.Product{}, errors.New("forbidden")
 	}
-
 	return s.repo.Restore(productID)
 }
