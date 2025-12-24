@@ -9,7 +9,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterRoutes(r *gin.Engine, authHandler *handlers.AuthHandler, productHandler *handlers.ProductHandler, jwt *jwtpkg.JWT, repo repositories.UserRepository) {
+func RegisterRoutes(
+	r *gin.Engine,
+	authHandler *handlers.AuthHandler,
+	productHandler *handlers.ProductHandler,
+	jwt *jwtpkg.JWT,
+	repo repositories.UserRepository,
+	cartHandler handlers.CartHandler,
+) {
 	api := r.Group("/api")
 
 	auth := api.Group("/auth")
@@ -31,5 +38,14 @@ func RegisterRoutes(r *gin.Engine, authHandler *handlers.AuthHandler, productHan
 		protected.PATCH("/product/:id", productHandler.Update)
 		protected.DELETE("/product/:id", productHandler.Delete)
 		protected.PATCH("product/:id/restore", productHandler.Restore)
+	}
+
+	cart := api.Group("/cart")
+	cart.Use(middlewares.AuthMiddleware(jwt, repo))
+	{
+		cart.GET("", cartHandler.Get)
+		cart.POST("/items", cartHandler.Add)
+		cart.PATCH("/items/:id", cartHandler.Update)
+		cart.DELETE("/items/:id", cartHandler.Delete)
 	}
 }
