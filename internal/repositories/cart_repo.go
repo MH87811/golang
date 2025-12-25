@@ -16,7 +16,7 @@ func NewCartRepo(db *gorm.DB) *CartRepo {
 func (r *CartRepo) GetOrCreateCart(userID uint) (models.Cart, error) {
 	var cart models.Cart
 
-	err := r.db.Preload("items.Product").Where("user_id = ?", userID).First(&cart).Error
+	err := r.db.Preload("Items.Product").Where("user_id = ?", userID).First(&cart).Error
 	if err == nil {
 		return cart, nil
 	}

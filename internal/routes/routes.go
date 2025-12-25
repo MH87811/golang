@@ -13,9 +13,9 @@ func RegisterRoutes(
 	r *gin.Engine,
 	authHandler *handlers.AuthHandler,
 	productHandler *handlers.ProductHandler,
+	cartHandler *handlers.CartHandler,
 	jwt *jwtpkg.JWT,
 	repo repositories.UserRepository,
-	cartHandler handlers.CartHandler,
 ) {
 	api := r.Group("/api")
 

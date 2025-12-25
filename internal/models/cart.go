@@ -11,9 +11,8 @@ type Cart struct {
 
 type CartItems struct {
 	gorm.Model
-	CartID    uint    `json:"cart_id" gorm:"idx_cart_product"`
-	Cart      Cart    `gorm:"foreignKey:CartID"`
-	ProductID uint    `json:"product_id" gorm:"idx_cart_product"`
-	Product   Product `gorm:"foreignKey:ProductID"`
-	Quantity  uint    `json:"quantity"`
+	CartID    uint `json:"cart_id" gorm:"idx_cart_product"`
+	ProductID uint `json:"product_id" gorm:"idx_cart_product"`
+	Product   Product
+	Quantity  uint `json:"quantity"`
 }

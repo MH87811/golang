@@ -2,9 +2,10 @@ package services
 
 import (
 	"errors"
-	"gorm.io/gorm"
 	"shop/internal/models"
 	"shop/internal/repositories"
+
+	"gorm.io/gorm"
 )
 
 type CartService struct {
@@ -58,7 +59,7 @@ func (s *CartService) UpdateItem(userID, itemId, qty uint) error {
 	}
 
 	var item models.CartItems
-	_, err = s.cartRepo.FindItem(cart.ID, itemId)
+	item, err = s.cartRepo.FindItem(cart.ID, itemId)
 	if err != nil {
 		return errors.New("item not found")
 	}
