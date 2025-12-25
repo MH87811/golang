@@ -24,6 +24,8 @@ func main() {
 		&models.Product{},
 		&models.Cart{},
 		&models.CartItems{},
+		&models.Order{},
+		&models.OrderItems{},
 	)
 
 	r := gin.Default()
@@ -33,25 +35,20 @@ func main() {
 	jwt := jwtpkg.New("super-secret")
 	productRepo := repositories.NewProductRepo(db)
 	cartRepo := repositories.NewCartRepo(db)
+	orderRepo := repositories.NewOrderRepo(db)
 
 	userService := services.NewUserService(userRepo)
 	authService := services.NewAuthService(userRepo, jwt)
 	productService := services.NewProductService(productRepo)
 	cartService := services.NewCartService(cartRepo, productRepo)
+	orderService := services.NewOrderService(db, orderRepo, cartRepo, productRepo)
 
 	authHandler := handlers.NewAuthHandler(userService, authService)
 	productHandler := handlers.NewProductHandler(productService)
 	cartHandler := handlers.NewCartHandler(cartService)
+	orderHandler := handlers.NewOrderHandler(orderService)
 
-	routes.RegisterRoutes(r, authHandler, productHandler, cartHandler, jwt, userRepo)
-
-	//for _, route := range r.Routes() {
-	//	println(route.Method, route.Path)
-	//}
-	//r.Use(gin.CustomRecovery(func(c *gin.Context, recovered any) {
-	//	fmt.Println("🔥 PANIC:", recovered)
-	//	c.AbortWithStatusJSON(500, gin.H{"error": "panic"})
-	//}))
+	routes.RegisterRoutes(r, authHandler, productHandler, cartHandler, orderHandler, jwt, userRepo)
 
 	r.Run(":8080")
 }

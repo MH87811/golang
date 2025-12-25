@@ -14,6 +14,7 @@ func RegisterRoutes(
 	authHandler *handlers.AuthHandler,
 	productHandler *handlers.ProductHandler,
 	cartHandler *handlers.CartHandler,
+	orderHandler *handlers.OrderHandler,
 	jwt *jwtpkg.JWT,
 	repo repositories.UserRepository,
 ) {
@@ -47,5 +48,12 @@ func RegisterRoutes(
 		cart.POST("/items", cartHandler.Add)
 		cart.PATCH("/items/:id", cartHandler.Update)
 		cart.DELETE("/items/:id", cartHandler.Delete)
+	}
+
+	order := api.Group("/order")
+	order.Use(middlewares.AuthMiddleware(jwt, repo))
+	{
+		order.POST("/order", orderHandler.Create)
+		order.GET("/order", orderHandler.List)
 	}
 }
