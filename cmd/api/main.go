@@ -41,7 +41,7 @@ func main() {
 	authService := services.NewAuthService(userRepo, jwt)
 	productService := services.NewProductService(productRepo)
 	cartService := services.NewCartService(cartRepo, productRepo)
-	orderService := services.NewOrderService(db, orderRepo, cartRepo, productRepo)
+	orderService := services.NewOrderService(db, orderRepo, cartRepo)
 
 	authHandler := handlers.NewAuthHandler(userService, authService)
 	productHandler := handlers.NewProductHandler(productService)

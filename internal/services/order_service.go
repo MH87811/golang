@@ -9,14 +9,13 @@ import (
 )
 
 type OrderService struct {
-	db          *gorm.DB
-	orderRepo   *repositories.OrderRepo
-	cartRepo    *repositories.CartRepo
-	productRepo *repositories.ProductRepo
+	db        *gorm.DB
+	orderRepo *repositories.OrderRepo
+	cartRepo  *repositories.CartRepo
 }
 
-func NewOrderService(db *gorm.DB, orderRepo *repositories.OrderRepo, cartRepo *repositories.CartRepo, productRepo *repositories.ProductRepo) *OrderService {
-	return &OrderService{db, orderRepo, cartRepo, productRepo}
+func NewOrderService(db *gorm.DB, orderRepo *repositories.OrderRepo, cartRepo *repositories.CartRepo) *OrderService {
+	return &OrderService{db, orderRepo, cartRepo}
 }
 
 func (s *OrderService) CreateFromCart(userID uint) (models.Order, error) {
@@ -44,7 +43,7 @@ func (s *OrderService) CreateFromCart(userID uint) (models.Order, error) {
 
 		for _, item := range cart.Items {
 			if item.Quantity > item.Product.Stock {
-				return errors.New("not enough stock")
+				return errors.New("not enough stock of " + item.Product.Name)
 			}
 
 			price := item.Product.Price
